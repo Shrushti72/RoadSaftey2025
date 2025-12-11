@@ -1,0 +1,6 @@
+[theme]
+primaryColor="#005A9C"  # Updated deep blue for safety focus
+backgroundColor="#F8FAFC"  # Light gray background
+secondaryBackgroundColor="#E0F2FE"  # Light blue for better contrast
+textColor="#0F172A"  # Darker gray for text
+font="sans serif"
