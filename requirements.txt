@@ -1,28 +1,12 @@
-# --- Core Streamlit and Dependencies (Pinned for stability) ---
-streamlit>=1.30.0,<1.40.0
-protobuf==3.20.3  # Pinned to a stable version to fix previous dependency conflicts
+pip>=23.0
+setuptools>=65.0
+wheel
 
-# --- Core Libraries ---
+streamlit
 pandas
-Pillow
+numpy
+scikit-learn
+opencv-python-headless
+pillow
 requests
 python-dotenv
-
-# --- Mapping Libraries ---
-folium
-streamlit-folium
-
-# --- Voice/Chat Assistant Libraries (CORRECTED PACKAGE) ---
-streamlit-mic-recorder  # <-- THIS IS THE CORRECT PACKAGE NAME
-langchain-google-genai
-langchain-core
-langchain-community
-langchain-text-splitters
-langchain-chroma
-google-generativeai
-
-# --- RAG/NLP Libraries ---
-gensim
-nltk
-scikit-learn
-pypdf
