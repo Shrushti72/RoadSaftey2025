@@ -10,6 +10,7 @@ from typing import Dict, Any, List
 import requests 
 import os
 from dotenv import load_dotenv
+from streamlit_mic_recorder import speech_to_text
 load_dotenv()
 
 # --- CONFIGURATION (MUST be the first Streamlit call) ---
@@ -20,7 +21,7 @@ st.set_page_config(
 )
 
 # --- NEW: API Configuration (You MUST replace this placeholder key) ---
-WEATHER_API_KEY = "YOUR_OpenWeatherMap_API_Key_Here"  # <-- REPLACE with your actual API key
+WEATHER_API_KEY = "eaa5a3f3c7d0b552f20111193d2c4fc4"  # <-- REPLACE with your actual API key
 WEATHER_API_URL = "https://api.openweathermap.org/data/2.5/weather"
 # --- END NEW CONFIG ---
 
@@ -583,6 +584,113 @@ def create_folium_map(risk_filter: str, road_type_filter: str, weather_filter: s
     
     return m
 
+# --- VOICE CHAT ASSISTANT IMPORTS AND FALLBACK ---
+# This block must be placed near your other imports or here if required later in the script
+try:
+    from streamlit_mic_recorder import speech_to_text
+except ImportError:
+    def speech_to_text(*args, **kwargs):
+        # Fallback definition if the library is not installed
+        return None
+# --- END VOICE CHAT ASSISTANT IMPORTS ---
+
+
+# --- CHAT ASSISTANT HELPER FUNCTION (LLM Simulation) ---
+# This function must be defined BEFORE render_safetygpt_assistant() calls it
+def generate_safety_response(prompt: str) -> str:
+    """Simulates an LLM response based on the user's prompt."""
+    prompt_lower = prompt.lower()
+    
+    if "speed" in prompt_lower or "limit" in prompt_lower:
+        return (
+            "Based on your query regarding speed limits, the recommended intervention is: "
+            "**Install enhanced radar speed displays** paired with automated speed enforcement (ASE) "
+            "cameras in high-risk zones, as per **IRC:SP-50 guidelines**. The AI estimates "
+            "this reduces collision severity by 15%."
+        )
+    elif "marking" in prompt_lower or "zebra" in prompt_lower or "faded" in prompt_lower:
+        return (
+            "Regarding road markings, the AI identifies a potential compliance issue. "
+            "The intervention should be **immediate repainting using Type 1 Thermoplastic material** "
+            "for superior retro-reflectivity, strictly following specifications in **IRC:35 and IRC:67**."
+        )
+    elif "intersection" in prompt_lower or "junction" in prompt_lower:
+        return (
+            "Intersection safety requires a geometric audit. Recommended action: **Re-phase the traffic signal** "
+            "to include an all-red clearance interval (3 seconds) to minimize 'red light runner' crashes. "
+            "Also, consider a high-friction surface treatment on approaches."
+        )
+    else:
+        return (
+            "RoadSafetyGPT has processed your general request. "
+            "Please specify a road element (e.g., *pavement, signage, guardrail*) or an IRC code "
+            "for a precise, standards-based recommendation."
+        )
+
+# --- FUNCTION FOR CHAT/VOICE ASSISTANT (This function uses generate_safety_response) ---
+def render_safetygpt_assistant():
+    st.markdown("## 🗣️ Ask RoadSafetyGPT (Voice/Text)")
+    
+    # --- VOICE ASSISTANT INTEGRATION (Design and Logic) ---
+    voice_placeholder = st.empty()
+    voice_prompt = None
+    
+    if 'speech_to_text' in globals() and speech_to_text is not None:
+        with voice_placeholder:
+            col_mic, col_label = st.columns([1, 4])
+            
+            with col_mic:
+                voice_prompt = speech_to_text(
+                    language='en',
+                    start_prompt="🎙️ SafteyGPT Assistant", 
+                    stop_prompt="🛑 Stop Recording",
+                    just_once=True,
+                    key='voice_assistant_stt'
+                )
+            
+            with col_label:
+                st.caption("Click the button to record your question (English only).")
+    else:
+        st.warning("Voice assistant is currently unavailable. Please ensure `streamlit-mic-recorder` is installed.")
+        
+    # --- END VOICE ASSISTANT INTEGRATION ---
+
+    # 1. Initialize chat history
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # 2. Display chat messages from history
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"], avatar=message.get("avatar")):
+            st.markdown(message["content"])
+
+    # 3. Handle Text Input
+    text_prompt = st.chat_input("Ask me a question about road safety...")
+    
+    prompt = voice_prompt if voice_prompt else text_prompt
+
+    # 4. Process the input (either voice or text)
+    if prompt:
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        with st.chat_message("assistant", avatar="🚦"):
+            with st.spinner(f"SafteyGPT is thinking..."):
+                # THIS CALL NOW WORKS because the function is defined above!
+                full_response = generate_safety_response(prompt) 
+            
+            st.markdown(full_response)
+            
+            st.session_state.messages.append({"role": "assistant", "content": full_response, "avatar": "🚦"})
+        
+        if voice_prompt:
+            voice_placeholder.empty()
+
+# --- Everything below this line is existing code (Sidebar, KPIs, Tabs, etc.) ---
+# ... (Selected filters, KPIs, etc.)
+
 # --- SIDEBAR FOR FILTERING & GUIDE (UPDATED) ---
 
 # --- SHECODES TEAM BRANDING (NEW IMAGE LOGO) ---
@@ -797,7 +905,8 @@ st.markdown("---")
 # --- 2. AI INTERVENTION TABS (RAG & Multimodal) ---
 with st.container():
     st.markdown("## 🧠 AI-Powered Safety Insights", unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["📚 Knowledge Base (RAG)", "📸 Multimodal Image Analysis"])
+    # Wrapping the tab names in ** ** makes them bold
+    tab1, tab2, tab3 = st.tabs(["**📚 Knowledge Base (RAG)**", "**📸 Multimodal Image Analysis**", "**🗣️ Voice Assistant**"])
 
     # --- RAG TAB (Query Bot) ---
     with tab1:
@@ -948,6 +1057,10 @@ with st.container():
                     <p class="rag-severity"><i class="fas fa-exclamation-triangle"></i> Risk Summary: **Pending**</p>
                 </div>
                 """, unsafe_allow_html=True)
+
+    with tab3:
+        # CALL THE FUNCTION HERE TO RENDER THE BUTTON AND CHAT
+        render_safetygpt_assistant()
 
 
 # --- 3. GEOGRAPHICAL RISK ANALYSIS (FOLIUM MAP) ---
@@ -1108,3 +1221,4 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.info("Transparency Note: The charts above represent the simulated coverage and confidence levels of the internal RAG knowledge base, ensuring users understand the breadth and reliability of the AI's recommendations.")
 
 st.markdown("---")
+
