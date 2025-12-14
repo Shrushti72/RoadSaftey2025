@@ -5,8 +5,10 @@ wheel
 streamlit
 pandas
 numpy
-scikit-learn
-opencv-python-headless
+folium
+streamlit-folium
 pillow
+opencv-python-headless
 requests
 python-dotenv
+streamlit-mic-recorder
